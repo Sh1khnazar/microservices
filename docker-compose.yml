@@ -1,0 +1,46 @@
+version: '3.9'
+
+services:
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: rabbitmq
+    ports:
+      - '5672:5672'
+      - '15672:15672'
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: secret
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  user-db:
+    image: postgres:16-alpine
+    container_name: user-db
+    environment:
+      POSTGRES_DB: user_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: secret
+    ports:
+      - '5433:5432'
+
+  property-db:
+    image: postgres:16-alpine
+    container_name: property-db
+    environment:
+      POSTGRES_DB: property_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: secret
+    ports:
+      - '5434:5432'
+  booking-db:
+    image: postgres:16-alpine
+    container_name: booking-db
+    environment:
+      POSTGRES_DB: booking_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: secret
+    ports:
+      - '5435:5432'
