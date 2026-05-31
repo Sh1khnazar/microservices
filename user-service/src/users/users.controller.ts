@@ -32,4 +32,9 @@ export class UsersController {
   remove(@Payload() data: { id: string }) {
     return this.usersService.remove(data.id);
   }
+
+  @MessagePattern('user.login')
+  login(@Payload() data: { email: string; password: string }) {
+    return this.usersService.login(data.email, data.password);
+  }
 }

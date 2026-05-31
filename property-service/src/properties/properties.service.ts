@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreatePropertyDto } from './dto/create-property.dto';
@@ -27,14 +31,24 @@ export class PropertiesService {
     return property;
   }
 
-  async update(id: string, dto: UpdatePropertyDto): Promise<Property> {
-    await this.findOne(id);
+  async update(
+    id: string,
+    dto: UpdatePropertyDto,
+    requesterId: string,
+  ): Promise<Property> {
+    const property = await this.findOne(id);
+    if (property.ownerId !== requesterId) {
+      throw new ForbiddenException('Faqat egasi o\'zgartirishi mumkin');
+    }
     await this.propertyRepo.update(id, dto);
     return this.findOne(id);
   }
 
-  async remove(id: string): Promise<{ deleted: boolean }> {
-    await this.findOne(id);
+  async remove(id: string, requesterId: string): Promise<{ deleted: boolean }> {
+    const property = await this.findOne(id);
+    if (property.ownerId !== requesterId) {
+      throw new ForbiddenException('Faqat egasi o\'chira oladi');
+    }
     await this.propertyRepo.delete(id);
     return { deleted: true };
   }

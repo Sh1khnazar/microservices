@@ -1,26 +1,29 @@
+import { config as dotenvConfig } from 'dotenv';
+dotenvConfig();
+
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.createMicroservice<MicroserviceOptions>(
-    AppModule,
-    {
-      transport: Transport.RMQ,
-      options: {
-        urls: ['amqp://admin:secret@localhost:5672'],
-        queue: 'property_queue',
-        queueOptions: {
-          durable: true,
-        },
-      },
+  const app = await NestFactory.create(AppModule, { logger: ['error', 'warn', 'log'] });
+
+  app.connectMicroservice<MicroserviceOptions>({
+    transport: Transport.RMQ,
+    options: {
+      urls: [process.env.RABBITMQ_URL!],
+      queue: 'property_queue',
+      queueOptions: { durable: true },
     },
-  );
+  });
 
   app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
+  app.enableShutdownHooks();
 
-  await app.listen();
-  console.log('🏠 Property service is listening...');
+  await app.startAllMicroservices();
+  const healthPort = parseInt(process.env.HEALTH_PORT ?? '3002', 10);
+  await app.listen(healthPort);
+  console.log(`Property service: RMQ listening, health at http://localhost:${healthPort}/health`);
 }
 void bootstrap();

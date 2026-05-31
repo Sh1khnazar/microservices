@@ -1,6 +1,5 @@
-version: '3.9'
-
 services:
+  # ─── Infrastructure ─────────────────────────────────────────────
   rabbitmq:
     image: rabbitmq:3.13-management-alpine
     container_name: rabbitmq
@@ -25,6 +24,11 @@ services:
       POSTGRES_PASSWORD: secret
     ports:
       - '5433:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d user_db']
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   property-db:
     image: postgres:16-alpine
@@ -35,6 +39,12 @@ services:
       POSTGRES_PASSWORD: secret
     ports:
       - '5434:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d property_db']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   booking-db:
     image: postgres:16-alpine
     container_name: booking-db
@@ -44,3 +54,100 @@ services:
       POSTGRES_PASSWORD: secret
     ports:
       - '5435:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d booking_db']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Application services ────────────────────────────────────────
+  user-service:
+    build:
+      context: ./user-service
+      dockerfile: Dockerfile
+    container_name: user-service
+    environment:
+      RABBITMQ_URL: amqp://admin:secret@rabbitmq:5672
+      DATABASE_URL: postgresql://postgres:secret@user-db:5432/user_db
+      JWT_SECRET: ${JWT_SECRET:-change_me_in_production}
+      HEALTH_PORT: 3001
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://localhost:3001/health || exit 1']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      user-db:
+        condition: service_healthy
+
+  property-service:
+    build:
+      context: ./property-service
+      dockerfile: Dockerfile
+    container_name: property-service
+    environment:
+      RABBITMQ_URL: amqp://admin:secret@rabbitmq:5672
+      DATABASE_URL: postgresql://postgres:secret@property-db:5432/property_db
+      HEALTH_PORT: 3002
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://localhost:3002/health || exit 1']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      property-db:
+        condition: service_healthy
+
+  booking-service:
+    build:
+      context: ./booking-service
+      dockerfile: Dockerfile
+    container_name: booking-service
+    environment:
+      RABBITMQ_URL: amqp://admin:secret@rabbitmq:5672
+      DATABASE_URL: postgresql://postgres:secret@booking-db:5432/booking_db
+      HEALTH_PORT: 3003
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://localhost:3003/health || exit 1']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      booking-db:
+        condition: service_healthy
+
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    container_name: api-gateway
+    ports:
+      - '3000:3000'
+    environment:
+      RABBITMQ_URL: amqp://admin:secret@rabbitmq:5672
+      JWT_SECRET: ${JWT_SECRET:-change_me_in_production}
+      PORT: 3000
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://localhost:3000/health || exit 1']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+      property-service:
+        condition: service_healthy
+      booking-service:
+        condition: service_healthy

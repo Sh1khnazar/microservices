@@ -11,6 +11,7 @@ import {
   Put,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
+import { CreateUserDto } from '../dto/create-user.dto';
 
 @Controller('users')
 export class UsersController {
@@ -21,7 +22,7 @@ export class UsersController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  create(@Body() body: any) {
+  create(@Body() body: CreateUserDto) {
     return this.userClient.send('user.create', body);
   }
 
@@ -36,7 +37,7 @@ export class UsersController {
   }
 
   @Put(':id')
-  update(@Param('id') id: string, @Body() body: any) {
+  update(@Param('id') id: string, @Body() body: Partial<CreateUserDto>) {
     return this.userClient.send('user.update', { id, body });
   }
 

@@ -1,0 +1,94 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ─── user-service ───────────────────────────────────────────────
+  user-service:
+    name: user-service (lint / build / test)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: user-service
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: user-service/pnpm-lock.yaml
+      - run: CI=true pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm build
+      - run: pnpm test
+
+  # ─── property-service ───────────────────────────────────────────
+  property-service:
+    name: property-service (lint / build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: property-service
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: property-service/pnpm-lock.yaml
+      - run: CI=true pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm build
+
+  # ─── booking-service ────────────────────────────────────────────
+  booking-service:
+    name: booking-service (lint / build / test)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: booking-service
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: booking-service/pnpm-lock.yaml
+      - run: CI=true pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm build
+      - run: pnpm test
+
+  # ─── api-gateway ────────────────────────────────────────────────
+  api-gateway:
+    name: api-gateway (lint / build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api-gateway
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: api-gateway/pnpm-lock.yaml
+      - run: CI=true pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm build

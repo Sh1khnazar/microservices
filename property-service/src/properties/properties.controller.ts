@@ -24,13 +24,16 @@ export class PropertiesController {
   }
 
   @MessagePattern('property.update')
-  update(@Payload() data: { id: string; body: UpdatePropertyDto }) {
-    return this.propertiesService.update(data.id, data.body);
+  update(
+    @Payload()
+    data: { id: string; body: UpdatePropertyDto; requesterId: string },
+  ) {
+    return this.propertiesService.update(data.id, data.body, data.requesterId);
   }
 
   @MessagePattern('property.remove')
-  remove(@Payload() data: { id: string }) {
-    return this.propertiesService.remove(data.id);
+  remove(@Payload() data: { id: string; requesterId: string }) {
+    return this.propertiesService.remove(data.id, data.requesterId);
   }
 
   @MessagePattern('property.setAvailability')

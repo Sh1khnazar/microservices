@@ -2,6 +2,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
@@ -10,9 +11,11 @@ export enum BookingStatus {
   PENDING = 'PENDING',
   CONFIRMED = 'CONFIRMED',
   CANCELLED = 'CANCELLED',
+  FAILED = 'FAILED',
 }
 
 @Entity('bookings')
+@Index(['propertyId', 'startDate', 'endDate'])
 export class Booking {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
