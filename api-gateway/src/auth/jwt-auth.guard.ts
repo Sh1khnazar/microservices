@@ -32,7 +32,7 @@ export class JwtAuthGuard implements CanActivate {
       (request as Request & { user: JwtPayload }).user = payload;
       return true;
     } catch {
-      throw new UnauthorizedException('Token noto\'g\'ri yoki muddati o\'tgan');
+      throw new UnauthorizedException("Token noto'g'ri yoki muddati o'tgan");
     }
   }
 

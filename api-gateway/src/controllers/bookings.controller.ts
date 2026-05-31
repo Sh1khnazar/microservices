@@ -33,19 +33,25 @@ export class BookingsController {
     });
   }
 
+  // Foydalanuvchi faqat o'z bronlarini ko'radi (booking-service userId bo'yicha filtrlaydi)
   @Get()
-  findAll() {
-    return this.bookingClient.send('booking.findAll', {});
+  @UseGuards(JwtAuthGuard)
+  findAll(@CurrentUser() user: JwtPayload) {
+    return this.bookingClient.send('booking.findByUser', { userId: user.sub });
   }
 
+  // Egalik tekshiruvi Variant B: service userId ni qabul qilib o'zi tekshiradi.
+  // Sabab: servis o'z ma'lumotini himoya qilgani toza (gateway ikki marta murojaat qilmaydi).
+  // Mos kelmasa service RpcException(403) qaytaradi → RpcExceptionFilter → 403 Forbidden.
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.bookingClient.send('booking.findOne', { id });
+  @UseGuards(JwtAuthGuard)
+  findOne(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
+    return this.bookingClient.send('booking.findOne', { id, userId: user.sub });
   }
 
   @Patch(':id/cancel')
   @UseGuards(JwtAuthGuard)
-  cancel(@Param('id') id: string) {
-    return this.bookingClient.send('booking.cancel', { id });
+  cancel(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
+    return this.bookingClient.send('booking.cancel', { id, userId: user.sub });
   }
 }

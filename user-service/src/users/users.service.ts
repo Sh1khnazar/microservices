@@ -22,7 +22,8 @@ export class UsersService {
 
   async create(dto: CreateUserDto): Promise<Omit<User, 'password'>> {
     const exists = await this.userRepo.findOneBy({ email: dto.email });
-    if (exists) throw new ConflictException('Bu email allaqachon ro\'yxatdan o\'tgan');
+    if (exists)
+      throw new ConflictException("Bu email allaqachon ro'yxatdan o'tgan");
 
     const hashed = await bcrypt.hash(dto.password, 12);
     const user = this.userRepo.create({ ...dto, password: hashed });
@@ -57,17 +58,20 @@ export class UsersService {
     return { deleted: true };
   }
 
-  async login(email: string, password: string): Promise<{ access_token: string }> {
+  async login(
+    email: string,
+    password: string,
+  ): Promise<{ access_token: string }> {
     const user = await this.userRepo
       .createQueryBuilder('u')
       .addSelect('u.password')
       .where('u.email = :email', { email })
       .getOne();
 
-    if (!user) throw new UnauthorizedException('Email yoki parol noto\'g\'ri');
+    if (!user) throw new UnauthorizedException("Email yoki parol noto'g'ri");
 
     const match = await bcrypt.compare(password, user.password);
-    if (!match) throw new UnauthorizedException('Email yoki parol noto\'g\'ri');
+    if (!match) throw new UnauthorizedException("Email yoki parol noto'g'ri");
 
     const payload = { sub: user.id, email: user.email };
     return { access_token: this.jwtService.sign(payload) };

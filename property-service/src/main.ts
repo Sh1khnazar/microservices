@@ -7,7 +7,9 @@ import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { logger: ['error', 'warn', 'log'] });
+  const app = await NestFactory.create(AppModule, {
+    logger: ['error', 'warn', 'log'],
+  });
 
   app.connectMicroservice<MicroserviceOptions>({
     transport: Transport.RMQ,
@@ -24,6 +26,8 @@ async function bootstrap() {
   await app.startAllMicroservices();
   const healthPort = parseInt(process.env.HEALTH_PORT ?? '3002', 10);
   await app.listen(healthPort);
-  console.log(`Property service: RMQ listening, health at http://localhost:${healthPort}/health`);
+  console.log(
+    `Property service: RMQ listening, health at http://localhost:${healthPort}/health`,
+  );
 }
 void bootstrap();

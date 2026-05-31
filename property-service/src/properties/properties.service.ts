@@ -38,7 +38,7 @@ export class PropertiesService {
   ): Promise<Property> {
     const property = await this.findOne(id);
     if (property.ownerId !== requesterId) {
-      throw new ForbiddenException('Faqat egasi o\'zgartirishi mumkin');
+      throw new ForbiddenException("Faqat egasi o'zgartirishi mumkin");
     }
     await this.propertyRepo.update(id, dto);
     return this.findOne(id);
@@ -47,7 +47,7 @@ export class PropertiesService {
   async remove(id: string, requesterId: string): Promise<{ deleted: boolean }> {
     const property = await this.findOne(id);
     if (property.ownerId !== requesterId) {
-      throw new ForbiddenException('Faqat egasi o\'chira oladi');
+      throw new ForbiddenException("Faqat egasi o'chira oladi");
     }
     await this.propertyRepo.delete(id);
     return { deleted: true };

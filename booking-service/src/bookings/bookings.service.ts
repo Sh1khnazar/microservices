@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Inject,
   Injectable,
   InternalServerErrorException,
@@ -43,7 +44,9 @@ export class BookingsService {
     const start = new Date(dto.startDate);
     const end = new Date(dto.endDate);
     if (end <= start) {
-      throw new BadRequestException('endDate startDate dan keyin bo\'lishi kerak');
+      throw new BadRequestException(
+        "endDate startDate dan keyin bo'lishi kerak",
+      );
     }
     const days = Math.ceil((end.getTime() - start.getTime()) / 86_400_000);
     const totalPrice = days * Number(property.price);
@@ -74,7 +77,21 @@ export class BookingsService {
         totalPrice,
         status: BookingStatus.CONFIRMED,
       });
-      return manager.save(newBooking);
+      try {
+        return await manager.save(newBooking);
+      } catch (err: unknown) {
+        // 23P01 = exclusion_violation: EXCLUDE constraint (btree_gist) buzilib qoldi.
+        // Bu FOR UPDATE o'tkazib yuborgan phantom insert'ni ushlab qoladi.
+        const pgCode =
+          (err as { driverError?: { code?: string }; code?: string })
+            ?.driverError?.code ?? (err as { code?: string })?.code;
+        if (pgCode === '23P01') {
+          throw new ConflictException(
+            `Property ${dto.propertyId} bu sanalar uchun allaqachon band`,
+          );
+        }
+        throw err;
+      }
     });
 
     // 3. Property ni band qil (compensating action: muvaffaqiyatsiz bo'lsa booking FAILED)
@@ -87,7 +104,9 @@ export class BookingsService {
       );
     } catch {
       // Compensating action: property update muvaffaqiyatsiz — booking bekor
-      await this.bookingRepo.update(booking.id, { status: BookingStatus.FAILED });
+      await this.bookingRepo.update(booking.id, {
+        status: BookingStatus.FAILED,
+      });
       throw new InternalServerErrorException(
         'Property holati yangilanmadi, bron bekor qilindi',
       );
@@ -100,19 +119,31 @@ export class BookingsService {
     return this.bookingRepo.find();
   }
 
-  async findOne(id: string): Promise<Booking> {
+  findByUser(userId: string): Promise<Booking[]> {
+    return this.bookingRepo.find({ where: { userId } });
+  }
+
+  async findOne(id: string, userId?: string): Promise<Booking> {
     const booking = await this.bookingRepo.findOneBy({ id });
     if (!booking) throw new NotFoundException(`Booking #${id} topilmadi`);
+    if (userId && booking.userId !== userId) {
+      throw new ForbiddenException("Bu bronni ko'rish huquqingiz yo'q");
+    }
     return booking;
   }
 
-  async cancel(id: string): Promise<Booking> {
+  async cancel(id: string, userId: string): Promise<Booking> {
     const booking = await this.findOne(id);
+    if (booking.userId !== userId) {
+      throw new ForbiddenException("Bu bronni bekor qilish huquqingiz yo'q");
+    }
     if (booking.status === BookingStatus.CANCELLED) {
       throw new BadRequestException('Bron allaqachon bekor qilingan');
     }
     if (booking.status !== BookingStatus.CONFIRMED) {
-      throw new BadRequestException('Faqat CONFIRMED bronni bekor qilish mumkin');
+      throw new BadRequestException(
+        'Faqat CONFIRMED bronni bekor qilish mumkin',
+      );
     }
 
     booking.status = BookingStatus.CANCELLED;

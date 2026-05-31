@@ -35,6 +35,7 @@ export class UsersController {
 
   @MessagePattern('user.login')
   login(@Payload() data: { email: string; password: string }) {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     return this.usersService.login(data.email, data.password);
   }
 }

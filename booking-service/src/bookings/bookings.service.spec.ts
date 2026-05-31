@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
@@ -47,6 +48,7 @@ describe('BookingsService', () => {
 
   const mockRepo = {
     findOneBy: jest.fn(),
+    find: jest.fn(),
     save: jest.fn(),
     update: jest.fn(),
     create: jest.fn(),
@@ -142,6 +144,18 @@ describe('BookingsService', () => {
       await expect(service.create(makeDto())).rejects.toThrow(ConflictException);
     });
 
+    it('should throw ConflictException when EXCLUDE constraint (23P01) fires on save', async () => {
+      mockUserClient.send.mockReturnValue(of(mockUser));
+      mockPropertyClient.send.mockReturnValue(of(mockProperty));
+
+      (mockQb.getOne as jest.Mock).mockResolvedValue(null);
+      mockEntityManager.create.mockReturnValue(makeBooking());
+      const pgError = Object.assign(new Error('exclusion'), { code: '23P01' });
+      mockEntityManager.save.mockRejectedValue(pgError);
+
+      await expect(service.create(makeDto())).rejects.toThrow(ConflictException);
+    });
+
     it('should apply compensating action (FAILED) when setAvailability fails', async () => {
       const dto = makeDto();
       const saved = makeBooking();
@@ -165,6 +179,20 @@ describe('BookingsService', () => {
     });
   });
 
+  // ─── findByUser() ───────────────────────────────────────────────
+
+  describe('findByUser()', () => {
+    it('should return bookings belonging to the user', async () => {
+      const bookings = [makeBooking()];
+      mockRepo.find.mockResolvedValue(bookings);
+
+      const result = await service.findByUser('user-1');
+
+      expect(result).toHaveLength(1);
+      expect(mockRepo.find).toHaveBeenCalledWith({ where: { userId: 'user-1' } });
+    });
+  });
+
   // ─── cancel() ───────────────────────────────────────────────────
 
   describe('cancel()', () => {
@@ -174,9 +202,17 @@ describe('BookingsService', () => {
       mockRepo.save.mockResolvedValue({ ...booking, status: BookingStatus.CANCELLED });
       mockPropertyClient.send.mockReturnValue(of({ ...mockProperty, isAvailable: true }));
 
-      const result = await service.cancel('booking-1');
+      const result = await service.cancel('booking-1', 'user-1');
 
       expect(result.status).toBe(BookingStatus.CANCELLED);
+    });
+
+    it('should throw ForbiddenException when userId does not match booking owner', async () => {
+      mockRepo.findOneBy.mockResolvedValue(makeBooking({ userId: 'user-1' }));
+
+      await expect(service.cancel('booking-1', 'other-user')).rejects.toThrow(
+        ForbiddenException,
+      );
     });
 
     it('should throw BadRequestException when booking is already cancelled', async () => {
@@ -184,7 +220,9 @@ describe('BookingsService', () => {
         makeBooking({ status: BookingStatus.CANCELLED }),
       );
 
-      await expect(service.cancel('booking-1')).rejects.toThrow(BadRequestException);
+      await expect(service.cancel('booking-1', 'user-1')).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should restore booking to CONFIRMED if setAvailability fails during cancel', async () => {
@@ -196,7 +234,7 @@ describe('BookingsService', () => {
         throwError(() => new Error('service down')),
       );
 
-      await expect(service.cancel('booking-1')).rejects.toThrow(
+      await expect(service.cancel('booking-1', 'user-1')).rejects.toThrow(
         InternalServerErrorException,
       );
       expect(mockRepo.update).toHaveBeenCalledWith('booking-1', {
@@ -208,11 +246,24 @@ describe('BookingsService', () => {
   // ─── findOne() ──────────────────────────────────────────────────
 
   describe('findOne()', () => {
-    it('should return booking when found', async () => {
+    it('should return booking when found (no userId — internal use)', async () => {
       const booking = makeBooking();
       mockRepo.findOneBy.mockResolvedValue(booking);
       const result = await service.findOne('booking-1');
       expect(result.id).toBe('booking-1');
+    });
+
+    it('should return booking when userId matches owner', async () => {
+      mockRepo.findOneBy.mockResolvedValue(makeBooking({ userId: 'user-1' }));
+      const result = await service.findOne('booking-1', 'user-1');
+      expect(result.id).toBe('booking-1');
+    });
+
+    it('should throw ForbiddenException when userId does not match owner', async () => {
+      mockRepo.findOneBy.mockResolvedValue(makeBooking({ userId: 'user-1' }));
+      await expect(service.findOne('booking-1', 'other-user')).rejects.toThrow(
+        ForbiddenException,
+      );
     });
 
     it('should throw NotFoundException when not found', async () => {

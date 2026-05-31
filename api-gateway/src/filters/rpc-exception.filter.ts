@@ -24,14 +24,14 @@ export class RpcExceptionFilter implements ExceptionFilter {
 
     const raw = exception.getError();
     const body: RpcErrorBody =
-      typeof raw === 'object' && raw !== null
-        ? (raw as RpcErrorBody)
-        : { message: String(raw) };
+      typeof raw === 'object' && raw !== null ? raw : { message: String(raw) };
 
     const statusCode = this.resolveStatus(body.statusCode);
     const message = body.message ?? 'Xato yuz berdi';
 
-    this.logger.error(`RpcException [${statusCode}]: ${JSON.stringify(message)}`);
+    this.logger.error(
+      `RpcException [${statusCode}]: ${JSON.stringify(message)}`,
+    );
 
     response.status(statusCode).json({
       statusCode,

@@ -26,7 +26,11 @@ export class PropertiesController {
   @MessagePattern('property.update')
   update(
     @Payload()
-    data: { id: string; body: UpdatePropertyDto; requesterId: string },
+    data: {
+      id: string;
+      body: UpdatePropertyDto;
+      requesterId: string;
+    },
   ) {
     return this.propertiesService.update(data.id, data.body, data.requesterId);
   }

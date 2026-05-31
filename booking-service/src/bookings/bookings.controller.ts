@@ -12,18 +12,23 @@ export class BookingsController {
     return this.bookingsService.create(dto);
   }
 
+  @MessagePattern('booking.findByUser')
+  findByUser(@Payload() data: { userId: string }) {
+    return this.bookingsService.findByUser(data.userId);
+  }
+
   @MessagePattern('booking.findAll')
   findAll() {
     return this.bookingsService.findAll();
   }
 
   @MessagePattern('booking.findOne')
-  findOne(@Payload() data: { id: string }) {
-    return this.bookingsService.findOne(data.id);
+  findOne(@Payload() data: { id: string; userId: string }) {
+    return this.bookingsService.findOne(data.id, data.userId);
   }
 
   @MessagePattern('booking.cancel')
-  cancel(@Payload() data: { id: string }) {
-    return this.bookingsService.cancel(data.id);
+  cancel(@Payload() data: { id: string; userId: string }) {
+    return this.bookingsService.cancel(data.id, data.userId);
   }
 }
